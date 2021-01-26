@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+
 using AutoPatterns.Utils;
 
 #nullable enable
@@ -50,7 +51,7 @@ namespace {meta.Namespace}
 
             source.Append(")");
 
-            if (properties.Where(p => p.DeclaredInBase).ToList() is {Count: > 0} declaredInBase)
+            if (properties.Where(p => p.DeclaredInBase).ToList() is { Count: > 0 } declaredInBase)
             {
                 source.Append(" : base(");
 
@@ -80,28 +81,27 @@ namespace {meta.Namespace}
                 source.AppendLine(@"
         partial void OnConstructed();");
 
-            if (!meta.IsAbstract)
+
+            for (int i = 0; i < properties.Count; i++)
             {
-                for (int i = 0; i < properties.Count; i++)
-                {
-                    var p = properties[i];
-                    source.Append(@"
+                var p = properties[i];
+                source.Append(@"
         public ").Append(p.DeclaredInBase ? "new " : "").Append(meta.Name)
-                        .Append(" With").Append(p.Name)
-                        .Append("(").Append(p.Type).Append(" value) => new ")
-                        .Append(meta.Name).Append("(");
+                    .Append(" With").Append(p.Name)
+                    .Append("(").Append(p.Type).Append(" value) => new ")
+                    .Append(meta.Name).Append("(");
 
-                    for (int j = 0; j < properties.Count; j++)
-                    {
-                        source.Append(i == j ? "value" : properties[j].Name);
+                for (int j = 0; j < properties.Count; j++)
+                {
+                    source.Append(i == j ? "value" : properties[j].Name);
 
-                        if (j < properties.Count - 1)
-                            source.Append(", ");
-                    }
-
-                    source.AppendLine(");");
+                    if (j < properties.Count - 1)
+                        source.Append(", ");
                 }
+
+                source.AppendLine(");");
             }
+
 
             source.AppendLine(@"    }
 }");
