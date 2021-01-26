@@ -24,15 +24,12 @@ namespace AutoPatterns.Tests
         public int Number { get; }
         public DateTime Date { get; }
         public List<DateTime> Dates{ get; private set; }
-    }", @"//HEAD
-using System;
+    }", @"using System;
 using System.Collections.Generic;
 using Auto;
 
 namespace AutoPatterns.Tests
 {
-    [System.CodeDom.Compiler.GeneratedCode("""", """")]
-    [System.Runtime.CompilerServices.CompilerGenerated]
     partial struct Main 
     {
         public Main(string text, int number, DateTime date, List<DateTime> dates)
@@ -55,7 +52,8 @@ namespace AutoPatterns.Tests
 
         public Main WithDates(List<DateTime> value) => new Main(Text, Number, Date, value);
     }
-}")
+}
+")
 
             //TODO 3 classes in derivation chain
         };
@@ -82,7 +80,11 @@ namespace AutoPatterns.Tests {{[AutoWith] {t.source} }}", t.expectedCode)
         }
 
         //TODO diagnostics tests
-        //TODO tests for lack of validation
+
         //TODO tests for abstract://do not generate for abstract class + //protected ctor for abstract class
+
+
+        //TODO tests for lack of validation == lack of generation OnConstructed 
+        //TODO check if OnConstructed is called (throw exception ?)
     }
 }

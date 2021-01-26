@@ -9,8 +9,9 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
-    <!--TODO-->
+    
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackFolder>analyzers\cs</PackFolder>
 
     <PackageIcon>shadow_lion.png</PackageIcon>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>

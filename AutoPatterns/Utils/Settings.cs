@@ -39,8 +39,7 @@ namespace AutoPatterns.Utils
 
         //TODO
         //public void RenderGeneratorHeaders (StringBuilder)
-        //TODO render content on members, not classes ? 
-
+        
         //TODO remove
         public string Generator => nameof(AutoWithGenerator);
 
@@ -56,9 +55,8 @@ namespace AutoPatterns.Utils
             {
                 result = new AutoWithSettings(
                     reader.GetBoolValue(0),
-                    context.AnalyzerConfigOptions.GlobalOptions.TryGetValue("build_property.GenerateDebuggerHook",
-                        out var hookText) && bool.TryParse(hookText, out var hook) && hook
-                );
+                    context.IsOptionEnabled("GenerateDebuggerHook")
+                    );
 
                 return true;
             }
