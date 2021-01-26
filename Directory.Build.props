@@ -1,0 +1,21 @@
+<Project>
+	<PropertyGroup>
+		<Version>0.0.1</Version> <!--This will get replaced by build system-->
+		<LangVersion>latest</LangVersion>
+		<!--<NullableContextOptions>enable</NullableContextOptions>-->
+
+		<Authors>Michał Bryłka</Authors>
+		<PackageLicenseExpression>BSD-2-Clause</PackageLicenseExpression>
+		<Copyright>Copyright (c) Michał Bryłka. Icon by http://www.iconka.com </Copyright>
+
+		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+		<WarningsAsErrors />
+
+		<!--Public sign-->
+		<SignAssembly>true</SignAssembly>
+		<DelaySign>false</DelaySign>
+		<PublicSign>true</PublicSign>
+		<AssemblyOriginatorKeyFile>..\AutoPatterns.Public.snk</AssemblyOriginatorKeyFile>
+	</PropertyGroup>
+
+</Project>

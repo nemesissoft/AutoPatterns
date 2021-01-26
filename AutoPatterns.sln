@@ -5,9 +5,16 @@ VisualStudioVersion = 16.0.30907.101
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AutoPatterns.Sample", "AutoPatterns.Sample\AutoPatterns.Sample.csproj", "{68EF5CE4-E2EF-4CC6-986B-9859943FCF8E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoPatterns", "AutoPatterns\AutoPatterns.csproj", "{25F7BDB4-7958-4627-BD77-8CBE0CD8F008}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AutoPatterns", "AutoPatterns\AutoPatterns.csproj", "{25F7BDB4-7958-4627-BD77-8CBE0CD8F008}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoPatterns.Tests", "AutoPatterns.Tests\AutoPatterns.Tests.csproj", "{FB0AD034-863B-47BE-AB50-F9BF415C77C4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AutoPatterns.Tests", "AutoPatterns.Tests\AutoPatterns.Tests.csproj", "{FB0AD034-863B-47BE-AB50-F9BF415C77C4}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution items", "Solution items", "{A6E28B5B-2FDD-44F0-9637-7D0ACCBA9C9D}"
+	ProjectSection(SolutionItems) = preProject
+		AutoPatterns.Public.snk = AutoPatterns.Public.snk
+		Directory.Build.props = Directory.Build.props
+		README.md = README.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
