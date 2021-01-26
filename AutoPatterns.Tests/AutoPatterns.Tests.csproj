@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net5.0</TargetFramework>
+		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="ApprovalTests" Version="5.4.3" />
+
+		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.8.*" />
+		<PackageReference Include="NUnit" Version="3.12.*" />
+		<PackageReference Include="NUnit3TestAdapter" Version="3.17.*" />
+
+		<PackageReference Include="Nemesis.CodeAnalysis" Version="1.0.2" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\AutoPatterns\AutoPatterns.csproj" />
+	</ItemGroup>
+
+</Project>
