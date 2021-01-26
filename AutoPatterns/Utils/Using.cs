@@ -5,8 +5,6 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-#nullable enable
-
 namespace AutoPatterns.Utils
 {
     internal sealed class Using : IEquatable<Using>

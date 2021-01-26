@@ -6,8 +6,6 @@ using System.Text;
 
 using AutoPatterns.Utils;
 
-#nullable enable
-
 namespace AutoPatterns
 {
     public partial class AutoWithGenerator
@@ -42,7 +40,7 @@ namespace {meta.Namespace}
         {(meta.IsAbstract ? "protected" : "public")} {meta.Name}(");
 
 
-            for (int i = 0; i < properties.Count; i++)
+            for (var i = 0; i < properties.Count; i++)
             {
                 source.Append(properties[i].Type).Append(" ").Append(properties[i].ParameterName);
                 if (i < properties.Count - 1)
@@ -55,7 +53,7 @@ namespace {meta.Namespace}
             {
                 source.Append(" : base(");
 
-                for (int i = 0; i < declaredInBase.Count; i++)
+                for (var i = 0; i < declaredInBase.Count; i++)
                 {
                     source.Append(declaredInBase[i].ParameterName);
                     if (i < declaredInBase.Count - 1)
@@ -82,7 +80,7 @@ namespace {meta.Namespace}
         partial void OnConstructed();");
 
 
-            for (int i = 0; i < properties.Count; i++)
+            for (var i = 0; i < properties.Count; i++)
             {
                 var p = properties[i];
                 source.Append(@"
@@ -91,7 +89,7 @@ namespace {meta.Namespace}
                     .Append("(").Append(p.Type).Append(" value) => new ")
                     .Append(meta.Name).Append("(");
 
-                for (int j = 0; j < properties.Count; j++)
+                for (var j = 0; j < properties.Count; j++)
                 {
                     source.Append(i == j ? "value" : properties[j].Name);
 

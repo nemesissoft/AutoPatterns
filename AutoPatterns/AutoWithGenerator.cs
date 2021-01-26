@@ -13,7 +13,6 @@ using Microsoft.CodeAnalysis.Text;
 
 using static AutoPatterns.Utils.GeneratorUtils;
 
-#nullable enable
 namespace AutoPatterns
 {
     [Generator]

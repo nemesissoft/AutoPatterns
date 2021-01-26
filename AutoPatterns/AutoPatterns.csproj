@@ -1,42 +1,44 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-	<PropertyGroup>
-		<TargetFramework>netstandard2.0</TargetFramework>
-		
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <Nullable>enable</Nullable>
 
-		<PackageTags>patterns auto automatic codegenerator codegen csharp-sourcegenerator</PackageTags>
-		<Description>Generate various productivity patterns using C# source code generators</Description>
-	</PropertyGroup>
+    <PackageTags>patterns auto automatic codegenerator codegen csharp-sourcegenerator</PackageTags>
+    <Description>Generate various productivity patterns using C# source code generators</Description>
+  </PropertyGroup>
 
-	<PropertyGroup Condition="'$(Configuration)'=='Release'">
-		<!--TODO-->
-		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <!--TODO-->
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 
-		<PackageIcon>shadow_lion.png</PackageIcon>
-		<PublishRepositoryUrl>true</PublishRepositoryUrl>
-		<PackageProjectUrl>https://github.com/nemesissoft/AutoPatterns/</PackageProjectUrl>
+    <PackageIcon>shadow_lion.png</PackageIcon>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <PackageProjectUrl>https://github.com/nemesissoft/AutoPatterns/</PackageProjectUrl>
 
-		<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
-		<EmbedUntrackedSources>true</EmbedUntrackedSources>
-		<IncludeSourceRevisionInInformationalVersion>true</IncludeSourceRevisionInInformationalVersion>
-	</PropertyGroup>
+    <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSourceRevisionInInformationalVersion>true</IncludeSourceRevisionInInformationalVersion>
+    <DebugType>embedded</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
 
-	<ItemGroup>
-		<None Include="..\images\shadow_lion.png" Pack="true" PackagePath="\" />
-	</ItemGroup>
+  <ItemGroup>
+    <None Include="..\images\shadow_lion.png" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
-	<ItemGroup>
-		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="3.8.0" PrivateAssets="all" />
-		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.1" PrivateAssets="all" />
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="3.8.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.1" PrivateAssets="all" />
 
-		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
-	</ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
+  </ItemGroup>
 
 
-	<ItemGroup>
-		<AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
-			<_Parameter1>$(MSBuildProjectName).Tests, PublicKey=00240000048000001401000006020000002400005253413100080000010001003d56b4b0220017c07e86cb0df067dfc8817f700daaa556a931b38ed46530d190b592eaa87c7dd89fa5789a1af6707d45fad329a0aebca7e2fd9169beaad15bbef64ae3055e2641f58a49d0f1d76d9b40b861539564470990f4dae40226783283939278e0c0ea481d107c35949e5b5954cb2cfb2a83cd60c405ff4f26e2606b3e383ed6fe438301ee429780f546eb9504993f2c81596a31fc8a9acf3e6a8cbc8c31366bf7c274e490f1063fa9b0020cc1e45396db2990b4fac8dd9af7e454d9523374bb3e4c7fa33061418bd0c940c0673ea5e8b70d7d5a574ddcb56ab456319f10164e4349ac623c72b0fd490f1df6830cac81cffa4e0e21ef81db452243c2ad</_Parameter1>
-		</AssemblyAttribute>
-	</ItemGroup>
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>$(MSBuildProjectName).Tests, PublicKey=00240000048000001401000006020000002400005253413100080000010001003d56b4b0220017c07e86cb0df067dfc8817f700daaa556a931b38ed46530d190b592eaa87c7dd89fa5789a1af6707d45fad329a0aebca7e2fd9169beaad15bbef64ae3055e2641f58a49d0f1d76d9b40b861539564470990f4dae40226783283939278e0c0ea481d107c35949e5b5954cb2cfb2a83cd60c405ff4f26e2606b3e383ed6fe438301ee429780f546eb9504993f2c81596a31fc8a9acf3e6a8cbc8c31366bf7c274e490f1063fa9b0020cc1e45396db2990b4fac8dd9af7e454d9523374bb3e4c7fa33061418bd0c940c0673ea5e8b70d7d5a574ddcb56ab456319f10164e4349ac623c72b0fd490f1df6830cac81cffa4e0e21ef81db452243c2ad</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
 
 </Project>

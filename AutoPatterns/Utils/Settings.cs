@@ -3,10 +3,9 @@ using System.Collections.Generic;
 
 using Microsoft.CodeAnalysis;
 
-#nullable enable
 namespace AutoPatterns.Utils
 {
-    readonly struct AttributeDataReader
+    internal readonly struct AttributeDataReader
     {
         public IReadOnlyList<TypedConstant> Args { get; }
 

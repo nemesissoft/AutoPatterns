@@ -1,8 +1,6 @@
 ﻿using System.Diagnostics;
 using Microsoft.CodeAnalysis;
 
-#nullable enable
-
 namespace AutoPatterns.Utils
 {
     //[Conditional("DEBUG")]

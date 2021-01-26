@@ -1,8 +1,6 @@
 ﻿using System.Linq;
 using Microsoft.CodeAnalysis;
 
-#nullable enable
-
 namespace AutoPatterns.Utils
 {
     internal class GeneratorUtils

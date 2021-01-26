@@ -1,13 +1,11 @@
-﻿#nullable enable
-
-namespace AutoPatterns.Utils
+﻿namespace AutoPatterns.Utils
 {
     internal static class CSharpKeyword
     {
         // The following method was derived from:
         // https://github.com/dotnet/roslyn/blob/bd3e3a2bbfd54f2ada8d8b384b008db4f466231c/src/Tools/Source/CompilerGeneratorTools/Source/BoundTreeGenerator/BoundNodeClassWriter.cs#L1897
 
-        public static bool Is(string name)
+        public static bool Is(string? name)
         {
             switch (name)
             {

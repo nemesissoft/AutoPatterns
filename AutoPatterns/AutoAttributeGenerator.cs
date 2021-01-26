@@ -4,8 +4,6 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
 
-#nullable enable
-
 namespace AutoPatterns
 {
     public interface IAutoAttributeGenerator : ISourceGenerator
