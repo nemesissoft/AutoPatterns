@@ -9,9 +9,11 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
-    
+
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackFolder>analyzers\cs</PackFolder>
+    <!-- Do not include the generator as a lib dependency -->
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
 
     <PackageIcon>shadow_lion.png</PackageIcon>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
@@ -23,6 +25,11 @@
     <DebugType>embedded</DebugType>
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
+
+  <ItemGroup Condition="'$(Configuration)'=='Release'">
+    <!-- Package the generator in the analyzer directory of the nuget package -->
+    <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+  </ItemGroup>
 
   <ItemGroup>
     <None Include="..\images\shadow_lion.png" Pack="true" PackagePath="\" />

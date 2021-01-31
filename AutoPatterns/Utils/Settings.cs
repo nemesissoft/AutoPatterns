@@ -8,16 +8,19 @@ namespace AutoPatterns.Utils
     internal readonly struct AttributeDataReader
     {
         public IReadOnlyList<TypedConstant> Args { get; }
+        //TODO add reader for:   TypedConstant overridenNameOpt = attributeData.NamedArguments.SingleOrDefault(kvp => kvp.Key == "PropertyName").Value;
 
         public AttributeDataReader(IReadOnlyList<TypedConstant> args) => Args = args;
 
         //public static AttributeDataReader FromAttributeData(AttributeData data) => new(data.ConstructorArguments);
 
+        //TODO change to TryGetBoolValue
+
         public bool GetBoolValue(int i) => Args.Count > i
             ? (bool)Args[i].Value!
             : throw new ArgumentOutOfRangeException(nameof(Args),
                 $"Cannot obtain argument parameter no {i}");
-
+        
         public bool IsConstructedWithPrimitives
         {
             get
@@ -25,12 +28,12 @@ namespace AutoPatterns.Utils
                 foreach (var arg in Args)
                     if (arg.Kind != TypedConstantKind.Primitive)
                         return false;
-
+                //TODO iterate over NamedArguments
                 return true;
             }
         }
     }
-
+    
     internal readonly struct AutoWithSettings
     {
         public bool SupportValidation { get; }
