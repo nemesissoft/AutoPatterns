@@ -23,10 +23,7 @@ jobs:
       run: dotnet build --no-restore -c Release -p:Version=0.1.${{ github.run_number }}
     - name: Test
       run: dotnet test --no-build -c Release --verbosity normal
-    #- name: PushNuget
-    #  run: dotnet nuget push *.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{secrets.NUGET_API_KEY}} --skip-duplicate
+    - name: Push Nuget
+      run: dotnet nuget push **/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{secrets.NUGET_API_KEY}} --skip-duplicate
 
-    # TODO push only on release, set version 
-    
-
-      
+    # TODO push only on release?
