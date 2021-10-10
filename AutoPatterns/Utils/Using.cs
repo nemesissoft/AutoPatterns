@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace AutoPatterns.Utils
 {
-    internal sealed class Using : IEquatable<Using>
+    public sealed class Using : IEquatable<Using>
     {
         public string NamespaceOrType { get; }
         public string? Alias { get; }
@@ -32,31 +32,31 @@ namespace AutoPatterns.Utils
             return result;
         }
 
-        public static void ExtractNamespaces(ITypeSymbol typeSymbol, ICollection<Using> namespaces)
+        public static void ExtractNamespaces(ITypeSymbol typeSymbol, ICollection<Using> namespacesCollection)
         {
             if (typeSymbol is INamedTypeSymbol { IsGenericType: true } namedType) //namedType.TypeParameters for unbound generics
             {
-                namespaces.Add(namedType.ContainingNamespace.ToDisplayString());
+                namespacesCollection.Add(namedType.ContainingNamespace.ToDisplayString());
 
                 foreach (var arg in namedType.TypeArguments)
-                    ExtractNamespaces(arg, namespaces);
+                    ExtractNamespaces(arg, namespacesCollection);
             }
             else if (typeSymbol is IArrayTypeSymbol arraySymbol)
             {
-                namespaces.Add("System");
+                namespacesCollection.Add("System");
 
                 ITypeSymbol elementSymbol = arraySymbol.ElementType;
                 while (elementSymbol is IArrayTypeSymbol innerArray)
                     elementSymbol = innerArray.ElementType;
 
-                ExtractNamespaces(elementSymbol, namespaces);
+                ExtractNamespaces(elementSymbol, namespacesCollection);
             }
             /*else if (typeSymbol.TypeKind == TypeKind.Error || typeSymbol.TypeKind == TypeKind.Dynamic)
             {
                 //add appropriate reference to your compilation 
             }*/
             else
-                namespaces.Add(typeSymbol.ContainingNamespace.ToDisplayString());
+                namespacesCollection.Add(typeSymbol.ContainingNamespace.ToDisplayString());
         }
 
         public string ToCSharpCode() => $"using {(UsingStatic ? "static " : "")}{(string.IsNullOrWhiteSpace(Alias) ? "" : $"{Alias} = ")}{NamespaceOrType};";

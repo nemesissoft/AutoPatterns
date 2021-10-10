@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace AutoPatterns.Utils
 {
-    internal class TypeMeta
+    public class TypeMeta
     {
         public string Name { get; }
         public string Namespace { get; }
@@ -38,13 +38,13 @@ namespace AutoPatterns.Utils
                 RecordDeclarationSyntax => "record",
                 _ => throw new NotSupportedException("Only class, struct or record types are allowed")
             };
-            bool isAbstract = type.Modifiers.Any(m => m.IsKind(SyntaxKind.AbstractKeyword));
+            var isAbstract = type.Modifiers.Any(m => m.IsKind(SyntaxKind.AbstractKeyword));
 
             return new(typeSymbol.Name, typeSymbol.ContainingNamespace.ToDisplayString(), typeDefinition, isAbstract);
         }
     }
 
-    internal class MemberMeta
+    public class MemberMeta
     {
         public string Name { get; }
         public string Type { get; }

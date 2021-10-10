@@ -15,7 +15,7 @@ namespace AutoPatterns.Utils
         }
     }
 
-    static class AnalyzerConfigOptionsExtensions
+    internal static class AnalyzerConfigOptionsExtensions
     {
         /*public static bool IsEnabled(this AnalyzerOptions options, string optionName)
             => IsEnabled(options.AnalyzerConfigOptionsProvider.GlobalOptions, optionName);

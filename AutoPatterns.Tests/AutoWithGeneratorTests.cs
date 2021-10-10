@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 using Nemesis.CodeAnalysis;
 
 using NUnit.Framework;
@@ -86,5 +81,9 @@ namespace AutoPatterns.Tests {{[AutoWith] {t.source} }}", t.expectedCode)
 
         //TODO tests for lack of validation == lack of generation OnConstructed 
         //TODO check if OnConstructed is called (throw exception ?)
+
+        //TODO test for AutoWith with 0 and 1 argument 
+
+        //TODO test for Base class with no members but with Derived class with some members 
     }
 }

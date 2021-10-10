@@ -1,32 +1,25 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
 using AutoPatterns.Utils;
 
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
 
-using static AutoPatterns.Utils.GeneratorUtils;
 
 namespace AutoPatterns
 {
+    public record AutoWithGeneratorState(IList<MemberMeta> Properties, AutoWithSettings? Settings);
+
+    //TODO add [System.Diagnostics.Contracts.Pure] for Withers 
     [Generator]
-    public sealed partial class AutoWithGenerator : AutoAttributeGenerator<AutoWithSyntaxReceiver>
+    public sealed class AutoWithGenerator : AutoAttributeGenerator<AutoWithGeneratorState>
     {
-        private const string PATTERN = "With";
-        internal readonly DiagnosticDescriptor NonPartialTypeRule = GetDiagnosticDescriptor(1, PATTERN, "Type decorated with {3} must be also declared partial");
-        internal readonly DiagnosticDescriptor NamespaceAndTypeNamesEqualRule = GetDiagnosticDescriptor(2, PATTERN, "Type name '{0}' cannot be equal to containing namespace: '{1}'");
-        internal readonly DiagnosticDescriptor InvalidSettingsAttributeRule = GetDiagnosticDescriptor(3, PATTERN, "Attribute {3} must be constructed with 1 boolean value, or with default values");
-        internal readonly DiagnosticDescriptor BaseTypeNotDecorated = GetDiagnosticDescriptor(4, PATTERN, "Base '{0}' type must also be decorated with {3} attribute");
+        private readonly DiagnosticDescriptor _invalidSettingsAttributeRule;
+        private readonly DiagnosticDescriptor _baseTypeNotDecorated;
+        private readonly DiagnosticDescriptor _noContractMembersRule;
 
-        internal readonly DiagnosticDescriptor NoContractMembersRule = GetDiagnosticDescriptor(50, PATTERN, "No properties for With pattern defined at '{0}'", DiagnosticSeverity.Warning);
-
-        public AutoWithGenerator() : base(PATTERN, "AutoWithAttribute", @"using System;
+        public AutoWithGenerator() : base("With", "AutoWithAttribute", @"using System;
 namespace Auto
 {
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, Inherited = false, AllowMultiple = false)]
@@ -36,102 +29,58 @@ namespace Auto
 
         public AutoWithAttribute(bool supportValidation = true) => SupportValidation = supportValidation;
     }
-}") { }
-
-        protected override void ProcessNodes(GeneratorExecutionContext context, AutoWithSyntaxReceiver receiver, Compilation compilation, INamedTypeSymbol autoAttributeSymbol)
+}")
         {
-            foreach (var type in receiver.CandidateTypes)
-            {
-                var model = compilation.GetSemanticModel(type.SyntaxTree);
-
-                if (model.GetDeclaredSymbol(type) is { } typeSymbol &&
-                    ShouldProcessType(typeSymbol, autoAttributeSymbol, context, out var settings))
-                {
-                    if (!type.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)))
-                    {
-                        ReportDiagnostics(context, NonPartialTypeRule, typeSymbol);
-                        continue;
-                    }
-
-                    if (!typeSymbol.ContainingSymbol.Equals(typeSymbol.ContainingNamespace, SymbolEqualityComparer.Default))
-                    {
-                        ReportDiagnostics(context, NamespaceAndTypeNamesEqualRule, typeSymbol);
-                        continue;
-                    }
-
-                    var namespaces = type.SyntaxTree.GetRoot() is CompilationUnitSyntax compilationUnit
-                        ? Using.FromCompilationUnit(compilationUnit)
-                        : new HashSet<Using>();
-                    namespaces.Add("System");
-
-
-                    if (TryGetProperties(typeSymbol, autoAttributeSymbol, context, namespaces, out var properties))
-                    {
-                        var meta = TypeMeta.FromDeclaration(type, typeSymbol);
-
-                        string classSource = RenderRecord(meta, properties, namespaces, settings);
-                        context.AddSource($"{typeSymbol.Name}_{PATTERN}.cs", SourceText.From(classSource, Encoding.UTF8));
-                    }
-                }
-            }
+            _invalidSettingsAttributeRule = GetDiagnosticDescriptor(3, AutoPatternName, "Attribute {3} must be constructed with 1 boolean value, or with default values");
+            _baseTypeNotDecorated = GetDiagnosticDescriptor(4, AutoPatternName, "Base '{0}' type must also be decorated with {3} attribute");
+            _noContractMembersRule = GetDiagnosticDescriptor(50, AutoPatternName, $"No properties for {AutoPatternName} pattern defined at '{{0}}'", DiagnosticSeverity.Warning);
         }
 
-        private bool ShouldProcessType(ISymbol typeSymbol, ISymbol autoAttributeSymbol, GeneratorExecutionContext context, out AutoWithSettings settings)
+        protected override bool ShouldProcessType(ISymbol typeSymbol, ISymbol autoAttributeSymbol,
+            in GeneratorExecutionContext context, out AutoWithGeneratorState? state)
         {
-            if (GetAttribute(typeSymbol, autoAttributeSymbol) is { } autoAttributeData)
+            if (GeneratorUtils.GetAttribute(typeSymbol, autoAttributeSymbol) is { } autoAttributeData)
             {
-                if (AutoWithSettings.TryFromCurrent(autoAttributeData, context, out settings))
+                if (CommonAutoSettings.TryLoad<AutoWithSettings>(autoAttributeData, context, out var settings))
+                {
+                    state = new(new List<MemberMeta>(), settings);
                     return true;
+                }
                 else
-                    ReportDiagnostics(context, InvalidSettingsAttributeRule, typeSymbol);
+                    ReportDiagnostics(context, _invalidSettingsAttributeRule, typeSymbol);
             }
 
-            settings = default;
+            state = default;
             return false;
         }
 
-        private bool TryGetProperties(ITypeSymbol typeSymbol, ISymbol autoAttributeSymbol, in GeneratorExecutionContext context, ICollection<Using> namespaces, out IReadOnlyList<MemberMeta> properties)
-        {
-            var propertyList = new List<MemberMeta>();
 
-            static string GetTypeMinimalName(ISymbol ts) =>
-                ts.ContainingType is { } containingType
-                    ? $"{containingType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)}.{ts.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)}"
-                    : ts.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+        protected override bool ShouldRender(INamedTypeSymbol typeSymbol, INamedTypeSymbol autoAttributeSymbol,
+            in GeneratorExecutionContext context, ICollection<Using> namespaces, AutoWithGeneratorState? state)
+        {
+            if (state is null)
+            {
+                ReportDiagnostics(context, NullStateRule, typeSymbol);
+                return false;
+            }
+
+            var propertyList = new List<MemberMeta>();
 
             void FetchProperties(INamespaceOrTypeSymbol symbol, bool declaredInBase)
             {
                 foreach (var ps in symbol.GetMembers().Where(s => s.Kind == SymbolKind.Property).OfType<IPropertySymbol>())
                 {
-                    propertyList.Add(new(ps.Name, GetTypeMinimalName(ps.Type), declaredInBase));
+                    propertyList.Add(new(ps.Name, SymbolUtils.GetTypeMinimalName(ps.Type), declaredInBase));
                     Using.ExtractNamespaces(ps.Type, namespaces);
                 }
             }
 
-            static IEnumerable<INamedTypeSymbol> GetSymbolHierarchy(ITypeSymbol symbol)
-            {
-                var result = new List<INamedTypeSymbol>();
-
-                while (symbol.BaseType != null)
-                {
-                    var @base = symbol.BaseType;
-
-                    if (@base.SpecialType == SpecialType.System_Object || @base.SpecialType == SpecialType.System_ValueType)
-                        break;
-
-                    result.Insert(0, @base);
-                    symbol = @base;
-                }
-
-                return result;
-            }
-
-            bool basesDecoratedProperly = true;
-            foreach (var baseType in GetSymbolHierarchy(typeSymbol))
+            var basesDecoratedProperly = true;
+            foreach (var baseType in SymbolUtils.GetSymbolHierarchy(typeSymbol))
             {
                 if (!ShouldProcessType(baseType, autoAttributeSymbol, context, out _))
                 {
-                    ReportDiagnostics(context, BaseTypeNotDecorated, baseType);
+                    ReportDiagnostics(context, _baseTypeNotDecorated, baseType);
                     basesDecoratedProperly = false;
                 }
 
@@ -140,35 +89,99 @@ namespace Auto
 
             FetchProperties(typeSymbol, false);
 
-            properties = propertyList;
-
-            if (properties.Count == 0)
+            if (propertyList.Count == 0)
             {
-                ReportDiagnostics(context, NoContractMembersRule, typeSymbol);
+                ReportDiagnostics(context, _noContractMembersRule, typeSymbol);
                 return false;
             }
 
+            foreach (var prop in propertyList)
+                state.Properties.Add(prop);
             return basesDecoratedProperly;
         }
-    }
 
-    public sealed class AutoWithSyntaxReceiver : ISyntaxReceiver
-    {
-        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-        private readonly List<TypeDeclarationSyntax> _candidateTypes = new();
-        public IEnumerable<TypeDeclarationSyntax> CandidateTypes => _candidateTypes;
 
-        public void OnVisitSyntaxNode(SyntaxNode syntaxNode)
+        protected override void Render(StringBuilder source, TypeMeta meta, AutoWithGeneratorState? state)
         {
-            if (syntaxNode is not TypeDeclarationSyntax tds || tds.AttributeLists.Count == 0) return;
+            var properties = state?.Properties ?? new List<MemberMeta>();
+            var settings = state?.Settings ?? new AutoWithSettings();
 
-            switch (tds)
+            source.Append($@"
+namespace {meta.Namespace}
+{{");
+            
+            source.Append($@"{INDENT_1}{meta.TypeDefinition} {meta.Name} 
+    {{");
+
+            RenderDebuggerHook(source, settings);
+
+            source.Append(@$"
+        {(meta.IsAbstract ? "protected" : "public")} {meta.Name}(");
+
+
+            for (var i = 0; i < properties.Count; i++)
             {
-                case StructDeclarationSyntax:
-                case ClassDeclarationSyntax:
-                    _candidateTypes.Add(tds);
-                    break;
+                source.Append(properties[i].Type).Append(" ").Append(properties[i].ParameterName);
+                if (i < properties.Count - 1)
+                    source.Append(", ");
             }
+
+            source.Append(")");
+
+            if (properties.Where(p => p.DeclaredInBase).ToList() is { Count: > 0 } declaredInBase)
+            {
+                source.Append(" : base(");
+
+                for (var i = 0; i < declaredInBase.Count; i++)
+                {
+                    source.Append(declaredInBase[i].ParameterName);
+                    if (i < declaredInBase.Count - 1)
+                        source.Append(", ");
+                }
+
+                source.Append(")");
+            }
+
+            source.AppendLine(@"
+        {");
+
+            foreach (var p in properties.Where(p => !p.DeclaredInBase))
+                source.Append("            ").Append(p.Name).Append(" = ").Append(p.ParameterName).AppendLine(";");
+
+            if (settings.SupportValidation)
+                source.Append(@"
+            OnConstructed();").AppendLine();
+
+            source.AppendLine(
+@"        }");
+            if (settings.SupportValidation)
+                source.AppendLine(@"
+        partial void OnConstructed();");
+
+
+            for (var i = 0; i < properties.Count; i++)
+            {
+                var p = properties[i];
+                source.Append(@"
+        public ").Append(p.DeclaredInBase ? "new " : "").Append(meta.Name)
+                    .Append(" With").Append(p.Name)
+                    .Append("(").Append(p.Type).Append(" value) => new ")
+                    .Append(meta.Name).Append("(");
+
+                for (var j = 0; j < properties.Count; j++)
+                {
+                    source.Append(i == j ? "value" : properties[j].Name);
+
+                    if (j < properties.Count - 1)
+                        source.Append(", ");
+                }
+
+                source.AppendLine(");");
+            }
+
+
+            source.AppendLine(@"    }
+}");
         }
     }
 }
