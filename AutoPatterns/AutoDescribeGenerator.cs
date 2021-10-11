@@ -132,7 +132,7 @@ namespace {meta.Namespace}
 {{");
 
             if (settings.AddDebuggerDisplayAttribute)
-                source.AppendLine($@"{INDENT_1}[System.Diagnostics.DebuggerDisplay(""{{GetDisplayText,nq}}"")]");
+                source.AppendLine($@"{INDENT_1}[System.Diagnostics.DebuggerDisplay(""{{GetDisplayText(),nq}}"")]");
 
             source.Append($@"{INDENT_1}{meta.TypeDefinition} {meta.Name} 
     {{");

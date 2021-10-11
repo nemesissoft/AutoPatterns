@@ -25,7 +25,7 @@ namespace AutoPatterns.Sample
     }
 
     [Auto.AutoWith(supportValidation:false)]
-    [Auto.AutoDescribe(true, true)]
+    [Auto.AutoDescribe(false, true)]
     partial class Derived : Base
     {
         public bool DerivedBool { get; }
