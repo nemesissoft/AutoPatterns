@@ -41,13 +41,13 @@ namespace Auto
     }
 
     internal static class Descriptor
-    {        
+    {
         public static string Describe(object value) =>
             value switch
             {
                 null => ""∅"",
                 bool b => b ? ""true"" : ""false"",
-                string s => s,
+                string s => $""\""{s}\"""",
                 char c => $""\'{c}\'"",
                 DateTime dt => dt.ToString(""o"", CultureInfo.InvariantCulture),
                 IEnumerable ie => ""["" + string.Join("", "", ie.Cast<object>().Select(Describe)) + ""]"",
@@ -178,11 +178,12 @@ namespace {meta.Namespace}
                     source.AppendLine(@$"
             if (base.{PRINT_MEMBERS}(builder)) builder.Append("", "");");
 
-                //TODO replace with concrete method calls + add SpecificDescribe for KeyValuePair<,> and generics 
+                //TODO add SpecificDescribe for KeyValuePair<,> and generics 
                 for (var i = 0; i < properties.Count; i++)
                 {
                     var p = properties[i];
 
+                    //TODO add option for customizing Descriptor.Describe method 
                     source.AppendLine($@"
             builder.Append(""{p.Name}"")
                    .Append("" = "")

@@ -105,7 +105,7 @@ namespace Auto
             var properties = state?.Properties ?? new List<MemberMeta>();
             var settings = state?.Settings ?? new AutoWithSettings(true);
 
-            source.Append($@"
+            source.AppendLine($@"
 namespace {meta.Namespace}
 {{");
             

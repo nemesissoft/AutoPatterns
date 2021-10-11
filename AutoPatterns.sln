@@ -17,6 +17,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution items", "Solution 
 		README.md = README.md
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoPatterns.Sample.Net", "AutoPatterns.Sample.Net\AutoPatterns.Sample.Net.csproj", "{ADF22EE2-A3A3-422A-B287-B0C7D0BD5595}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -35,6 +37,10 @@ Global
 		{FB0AD034-863B-47BE-AB50-F9BF415C77C4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FB0AD034-863B-47BE-AB50-F9BF415C77C4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FB0AD034-863B-47BE-AB50-F9BF415C77C4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ADF22EE2-A3A3-422A-B287-B0C7D0BD5595}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ADF22EE2-A3A3-422A-B287-B0C7D0BD5595}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ADF22EE2-A3A3-422A-B287-B0C7D0BD5595}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ADF22EE2-A3A3-422A-B287-B0C7D0BD5595}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -3,16 +3,18 @@ using System.Collections.Generic;
 using System.IO;
 // ReSharper disable InconsistentNaming
 
-namespace AutoPatterns.Sample
+namespace AutoPatterns.Sample.Net
 {
     class Program
     {
         static void Main()
         {
-            var @base = new Base("", 15, DateTime.MaxValue, null).WithBaseText("AAA");
+            var @base = new Base("", 15, DateTime.MaxValue, new() { true, false })
+                .WithBaseText("AAA");
             Console.WriteLine(@base);
 
-            var der2 = new Derived2("", 15, DateTime.MaxValue, null, false, FileMode.Append, 88).WithBaseText("BBB");
+            var der2 = new Derived2("", 15, DateTime.MaxValue, null, false, FileMode.Append, 88)
+                .WithBaseText("BBB");
             Console.WriteLine(der2);
         }
     }
@@ -25,7 +27,7 @@ namespace AutoPatterns.Sample
         public int BaseInt { get; }
 
         public DateTime BaseDate { get; }
-        public List<DateTime> BaseDates { get; private set; }
+        public List<bool> BaseBools { get; private set; }
     }
 
     [Auto.AutoWith(supportValidation: false)]
@@ -49,4 +51,3 @@ namespace AutoPatterns.Sample
     {
     }
 }
-
