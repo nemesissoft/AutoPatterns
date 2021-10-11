@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Reflection;
 
 using Microsoft.CodeAnalysis;
 
@@ -7,10 +10,12 @@ namespace AutoPatterns.Utils
 {
     internal static class AttributeDataReader
     {
-        //TODO change to TryGetBoolValue
+        public static readonly MethodInfo GetValueMethod =
+            typeof(AttributeDataReader).GetMethod(nameof(GetValue))
+            ?? throw new MissingMethodException(nameof(AttributeDataReader), nameof(GetValue));
 
-        public static bool GetBoolValue(IReadOnlyList<TypedConstant> args, int i) => args.Count > i
-            ? (bool)args[i].Value!
+        public static TValue GetValue<TValue>(IReadOnlyList<TypedConstant> args, int i) => args.Count > i
+            ? (TValue)args[i].Value!
             : throw new ArgumentOutOfRangeException(nameof(args),
                 $"Cannot obtain argument parameter no {i}");
 
@@ -19,63 +24,77 @@ namespace AutoPatterns.Utils
             foreach (var arg in args)
                 if (arg.Kind != TypedConstantKind.Primitive)
                     return false;
-            //TODO iterate over NamedArguments
             return true;
         }
     }
 
-    public abstract class CommonAutoSettings
+    public abstract record CommonAutoSettings
     {
-        public bool GenerateDebuggerHook { get; private set; }
+        private class AttributeParameterReader
+        {
+            public int MaxAttrParams { get; }
+            public Func<IReadOnlyList<TypedConstant>, CommonAutoSettings> Reader { get; }
 
-        //TODO
-        //public void RenderGeneratorHeaders (StringBuilder)
+            public AttributeParameterReader(int maxAttrParams, Type settingsType)
+            {
+                MaxAttrParams = maxAttrParams;
+                Reader = GenerateReader(settingsType);
+            }
+
+            private static Func<IReadOnlyList<TypedConstant>, CommonAutoSettings> GenerateReader(Type type)
+            {
+                var ctor = type.GetConstructors().OrderByDescending(c => c.GetParameters().Length).FirstOrDefault()
+                           ?? throw new MissingMemberException($"{type.Name} should have at least 1 constructor. The one with largest number of parameters will be used");
+
+                var args = Expression.Parameter(typeof(IReadOnlyList<TypedConstant>), "args");
+
+                Expression[] ctorArguments = ctor.GetParameters().Select((param, i) => (Expression)
+                    Expression.Call(AttributeDataReader.GetValueMethod.MakeGenericMethod(param.ParameterType),
+                        args, Expression.Constant(i))
+                ).ToArray();
+
+                var ctorExpr = Expression.New(ctor, ctorArguments);
+
+                var lambda = Expression.Lambda<Func<IReadOnlyList<TypedConstant>, CommonAutoSettings>>(ctorExpr, args);
+                return lambda.Compile();
+            }
+        }
+
+        private static readonly Dictionary<Type, AttributeParameterReader> _attributeParameterReaders = new()
+        {
+            [typeof(AutoWithSettings)] = new(1, typeof(AutoWithSettings)),
+            [typeof(AutoDescribeSettings)] = new(2, typeof(AutoDescribeSettings))
+        };
+
+        public bool GenerateDebuggerHook { get; private set; }
 
         private void LoadCommon(GeneratorExecutionContext context) =>
             GenerateDebuggerHook = context.IsOptionEnabled("GenerateDebuggerHook");
 
         public static bool TryLoad<TSettings>(AttributeData attribute, GeneratorExecutionContext context, out TSettings? result)
-            where TSettings : CommonAutoSettings, new()
+            where TSettings : CommonAutoSettings
         {
-            result = new();
-            if (result.CanLoad(attribute))
+            var settingsType = typeof(TSettings);
+            var attrReader = _attributeParameterReaders.TryGetValue(settingsType, out var reader)
+                ? reader
+                : throw new NotSupportedException(
+                    $"{settingsType.Name} is not properly configured in settings reader");
+
+            CommonAutoSettings? newSettings = null;
+
+            if (attribute.ConstructorArguments is { } args && args.Length <= reader.MaxAttrParams &&
+                AttributeDataReader.IsConstructedWithPrimitives(args))
             {
-                result.Load(attribute.ConstructorArguments);
-                result.LoadCommon(context);
-                return true;
+                newSettings = attrReader.Reader(args);
+                newSettings.LoadCommon(context);
             }
-            result = default;
-            return false;
-        }
 
-        protected abstract bool CanLoad(AttributeData attribute);
-        protected abstract void Load(IReadOnlyList<TypedConstant> args);
-    }
-
-    public class AutoWithSettings : CommonAutoSettings
-    {
-        public bool SupportValidation { get; private set; }
-
-        protected override bool CanLoad(AttributeData attribute) =>
-            attribute.ConstructorArguments is {Length: <= 1} args && AttributeDataReader.IsConstructedWithPrimitives(args);
-
-        protected override void Load(IReadOnlyList<TypedConstant> args) =>
-            SupportValidation = AttributeDataReader.GetBoolValue(args, 0);
-    }
-    
-    public class AutoDescribeSettings : CommonAutoSettings
-    {
-        public bool AddToStringMethod { get; private set; }
-        public bool AddDebuggerDisplayAttribute { get; private set; }
-        
-        protected override bool CanLoad(AttributeData attribute) =>
-            attribute.ConstructorArguments is { Length: <= 2 } args &&
-            AttributeDataReader.IsConstructedWithPrimitives(args);
-
-        protected override void Load(IReadOnlyList<TypedConstant> args)
-        {
-            AddToStringMethod = AttributeDataReader.GetBoolValue(args, 0);
-            AddDebuggerDisplayAttribute = AttributeDataReader.GetBoolValue(args, 1);
+            result = (TSettings?)newSettings;
+            return result is not null;
         }
     }
+
+    public record AutoWithSettings(bool SupportValidation) : CommonAutoSettings;
+
+    public record AutoDescribeSettings(bool AddToStringMethod, bool AddDebuggerDisplayAttribute) : CommonAutoSettings;
 }

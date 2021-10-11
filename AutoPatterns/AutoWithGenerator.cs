@@ -10,8 +10,7 @@ using Microsoft.CodeAnalysis;
 namespace AutoPatterns
 {
     public record AutoWithGeneratorState(IList<MemberMeta> Properties, AutoWithSettings? Settings);
-
-    //TODO add [System.Diagnostics.Contracts.Pure] for Withers 
+    
     [Generator]
     public sealed class AutoWithGenerator : AutoAttributeGenerator<AutoWithGeneratorState>
     {
@@ -104,7 +103,7 @@ namespace Auto
         protected override void Render(StringBuilder source, TypeMeta meta, AutoWithGeneratorState? state)
         {
             var properties = state?.Properties ?? new List<MemberMeta>();
-            var settings = state?.Settings ?? new AutoWithSettings();
+            var settings = state?.Settings ?? new AutoWithSettings(true);
 
             source.Append($@"
 namespace {meta.Namespace}
@@ -163,6 +162,7 @@ namespace {meta.Namespace}
             {
                 var p = properties[i];
                 source.Append(@"
+        [System.Diagnostics.Contracts.Pure]
         public ").Append(p.DeclaredInBase ? "new " : "").Append(meta.Name)
                     .Append(" With").Append(p.Name)
                     .Append("(").Append(p.Type).Append(" value) => new ")

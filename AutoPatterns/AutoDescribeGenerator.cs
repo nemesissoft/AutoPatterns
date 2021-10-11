@@ -123,8 +123,12 @@ namespace Auto
 
         protected override void Render(StringBuilder source, TypeMeta meta, AutoDescribeGeneratorState? state)
         {
+            const string DISPLAY_METHOD = "GetDisplayText";
+            const string PRINT_MEMBERS = "PrintMembers";
+
+            //TODO improve nullable checks 
             var properties = state?.Properties ?? new List<MemberMeta>();
-            var settings = state?.Settings ?? new AutoDescribeSettings();
+            var settings = state?.Settings ?? new AutoDescribeSettings(true, false);
             var isDerivedClass = state?.IsDerivedClass ?? false;
 
             source.AppendLine($@"
@@ -132,7 +136,7 @@ namespace {meta.Namespace}
 {{");
 
             if (settings.AddDebuggerDisplayAttribute)
-                source.AppendLine($@"{INDENT_1}[System.Diagnostics.DebuggerDisplay(""{{GetDisplayText(),nq}}"")]");
+                source.AppendLine($@"{INDENT_1}[System.Diagnostics.DebuggerDisplay(""{{{DISPLAY_METHOD}(),nq}}"")]");
 
             source.Append($@"{INDENT_1}{meta.TypeDefinition} {meta.Name} 
     {{");
@@ -140,12 +144,12 @@ namespace {meta.Namespace}
             RenderDebuggerHook(source, settings);
 
             source.AppendLine($@"
-        private string GetDisplayText()
+        private string {DISPLAY_METHOD}()
         {{
             var sb = new System.Text.StringBuilder();
         	sb.Append(""{meta.Name}"");
         	sb.Append("" {{ "");
-        	if (this.PrintMembers(sb))
+        	if (this.{PRINT_MEMBERS}(sb))
         		sb.Append("" "");
         	sb.Append(""}}"");
         	return sb.ToString();
@@ -153,35 +157,48 @@ namespace {meta.Namespace}
 
 
             if (settings.AddToStringMethod)
-                source.AppendLine($@"{INDENT_2}public override string ToString() => GetDisplayText();");
+                source.AppendLine($@"{INDENT_2}public override string ToString() => {DISPLAY_METHOD}();");
 
+            //TODO add no modifier for base class with sealed keyword 
             source.Append($@"
-        protected {(isDerivedClass ? "override" : "virtual")} bool PrintMembers(System.Text.StringBuilder builder)
+        protected {(isDerivedClass ? "override" : "virtual")} bool {PRINT_MEMBERS}(System.Text.StringBuilder builder)
         {{");
 
-            if (isDerivedClass)
-                source.AppendLine(@"
-            if (base.PrintMembers(builder)) builder.Append("", "");");
-
-            //TODO replace with concrete method calls + add SpecificDescribe for KeyValuePair<,> and generics 
-            for (var i = 0; i < properties.Count; i++)
+            if (properties.Count == 0)
             {
-                var p = properties[i];
+                source.AppendLine(isDerivedClass
+                    ? @$"
+            return base.{PRINT_MEMBERS}(builder);"
+                    : @"
+            return false;");
+            }
+            else
+            {
+                if (isDerivedClass)
+                    source.AppendLine(@$"
+            if (base.{PRINT_MEMBERS}(builder)) builder.Append("", "");");
 
-                source.AppendLine($@"
+                //TODO replace with concrete method calls + add SpecificDescribe for KeyValuePair<,> and generics 
+                for (var i = 0; i < properties.Count; i++)
+                {
+                    var p = properties[i];
+
+                    source.AppendLine($@"
             builder.Append(""{p.Name}"")
                    .Append("" = "")
                    .Append(Auto.Descriptor.Describe({p.Name}));");
 
-                if (i < properties.Count - 1)
-                    source.AppendLine($@"{INDENT_3}builder.Append("", "");");
+                    if (i < properties.Count - 1)
+                        source.AppendLine($@"{INDENT_3}builder.Append("", "");");
+                }
+
+                source.AppendLine(@"
+            return true;");
+
             }
 
-            source.AppendLine($@"
-            return {(properties.Count > 0 ? "true" : "false")}; 
-        }}");
-
-            source.AppendLine(@"    }
+            source.AppendLine(@"        }
+    }
 }");
         }
     }

@@ -8,12 +8,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Linq;
-using System.Reflection;
 
 namespace AutoPatterns
 {
     public abstract class AutoAttributeGenerator : ISourceGenerator
     {
+        //TODO add support for text templating engine i.e. Scriban 
         protected const string INDENT_1 = "    ";
         protected const string INDENT_2 = "        ";
         protected const string INDENT_3 = "            ";
@@ -40,6 +40,7 @@ namespace AutoPatterns
             ));
     }
 
+    //TODO separate state from settings 
     public abstract class AutoAttributeGenerator<TRenderState> : AutoAttributeGenerator
     {
         public sealed override string AutoPatternName { get; }
