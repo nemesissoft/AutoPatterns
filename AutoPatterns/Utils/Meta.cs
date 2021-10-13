@@ -1,34 +1,14 @@
 ﻿using System;
 using System.Linq;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace AutoPatterns.Utils
 {
-    public class TypeMeta
+    public record TypeMeta(string Name, string Namespace, string TypeDefinition, bool IsAbstract)
     {
-        public string Name { get; }
-        public string Namespace { get; }
-        public string TypeDefinition { get; }
-        public bool IsAbstract { get; }
-
-        public TypeMeta(string name, string ns, string typeDefinition, bool isAbstract)
-        {
-            Name = name;
-            Namespace = ns;
-            TypeDefinition = typeDefinition;
-            IsAbstract = isAbstract;
-        }
-
-        public void Deconstruct(out string name, out string ns, out string typeDefinition, out bool isAbstract)
-        {
-            name = Name;
-            ns = Namespace;
-            typeDefinition = TypeDefinition;
-            isAbstract = IsAbstract;
-        }
-
         public static TypeMeta FromDeclaration(TypeDeclarationSyntax type, INamedTypeSymbol typeSymbol)
         {
             var typeDefinition = type.Modifiers + " " + type switch
@@ -44,23 +24,17 @@ namespace AutoPatterns.Utils
         }
     }
 
-    public class MemberMeta
+    public record MemberMeta(string Name, string Type, bool DeclaredInBase, bool IsAbstract)
     {
-        public string Name { get; }
-        public string Type { get; }
-        public bool DeclaredInBase { get; }
-        public string ParameterName { get; }
+        private string? _parameterName;
+        public string ParameterName => _parameterName ??= GetParameterName(Name);
 
-        public MemberMeta(string name, string type, bool declaredInBase)
+        private static string GetParameterName(string name)
         {
-            Name = name;
-            Type = type;
-            DeclaredInBase = declaredInBase;
-
             var parameterName = char.ToLower(name[0]) + name.Substring(1);
             if (CSharpKeyword.Is(parameterName))
                 parameterName = "@" + parameterName;
-            ParameterName = parameterName;
+            return parameterName;
         }
     }
 }

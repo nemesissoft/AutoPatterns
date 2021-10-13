@@ -68,6 +68,7 @@ namespace AutoPatterns.Utils
 
         public bool GenerateDebuggerHook { get; private set; }
 
+        //TODO generate this method via reflection:
         private void LoadCommon(GeneratorExecutionContext context) =>
             GenerateDebuggerHook = context.IsOptionEnabled("GenerateDebuggerHook");
 
@@ -82,12 +83,16 @@ namespace AutoPatterns.Utils
 
             CommonAutoSettings? newSettings = null;
 
-            if (attribute.ConstructorArguments is { } args && args.Length <= reader.MaxAttrParams &&
-                AttributeDataReader.IsConstructedWithPrimitives(args))
+            try
             {
-                newSettings = attrReader.Reader(args);
-                newSettings.LoadCommon(context);
+                if (attribute.ConstructorArguments is { } args && args.Length <= reader.MaxAttrParams &&
+                    AttributeDataReader.IsConstructedWithPrimitives(args))
+                {
+                    newSettings = attrReader.Reader(args);
+                    newSettings.LoadCommon(context);
+                }
             }
+            catch (Exception) { newSettings = null; }
 
             result = (TSettings?)newSettings;
             return result is not null;

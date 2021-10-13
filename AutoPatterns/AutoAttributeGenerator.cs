@@ -24,11 +24,11 @@ namespace AutoPatterns
         public abstract void Initialize(GeneratorInitializationContext context);
         public abstract void Execute(GeneratorExecutionContext context);
 
-        protected static readonly DiagnosticDescriptor NoAutoAttributeRule = GetDiagnosticDescriptor(0, "Auto", "Auto attribute '{3}' associated with {2} is not defined");
-        protected static readonly DiagnosticDescriptor NoSyntaxReceiver = GetDiagnosticDescriptor(256, "Auto", "Internal error - no appropriate syntax receiver");
-        protected static readonly DiagnosticDescriptor CSharpNotSupported = GetDiagnosticDescriptor(257, "Auto", "C# compilation units are NOT supported");
-        //protected static readonly DiagnosticDescriptor VisualBasicNotSupported = GetDiagnosticDescriptor(258, "Auto", "VB.NET compilation units are NOT supported");
-        protected static readonly DiagnosticDescriptor NullStateRule = GetDiagnosticDescriptor(259, "Auto", "Generator internal state is null");
+        internal static readonly DiagnosticDescriptor NoAutoAttributeRule = GetDiagnosticDescriptor(0, "Auto", "Auto attribute '{3}' associated with {2} is not defined");
+        internal static readonly DiagnosticDescriptor NoSyntaxReceiver = GetDiagnosticDescriptor(256, "Auto", "Internal error - no appropriate syntax receiver");
+        internal static readonly DiagnosticDescriptor CSharpNotSupported = GetDiagnosticDescriptor(257, "Auto", "C# compilation units are NOT supported");
+        //internal static readonly DiagnosticDescriptor VisualBasicNotSupported = GetDiagnosticDescriptor(258, "Auto", "VB.NET compilation units are NOT supported");
+        internal static readonly DiagnosticDescriptor NullStateRule = GetDiagnosticDescriptor(259, "Auto", "Generator internal state is null");
 
 
         protected static DiagnosticDescriptor GetDiagnosticDescriptor(ushort id, string patternName, string message, DiagnosticSeverity diagnosticSeverity = DiagnosticSeverity.Error)
@@ -47,8 +47,8 @@ namespace AutoPatterns
         public sealed override string AutoAttributeName { get; }
         protected string AutoAttributeSource { get; }
 
-        private readonly DiagnosticDescriptor _nonPartialTypeRule;
-        private readonly DiagnosticDescriptor _namespaceAndTypeNamesEqualRule;
+        internal readonly DiagnosticDescriptor NonPartialTypeRule;
+        internal readonly DiagnosticDescriptor NamespaceAndTypeNamesEqualRule;
 
         protected AutoAttributeGenerator(string autoPatternName, string autoAttributeName, string autoAttributeSource)
         {
@@ -56,8 +56,8 @@ namespace AutoPatterns
             AutoAttributeName = autoAttributeName;
             AutoAttributeSource = autoAttributeSource;
 
-            _nonPartialTypeRule = GetDiagnosticDescriptor(1, AutoPatternName, "Type decorated with {3} must be also declared partial");
-            _namespaceAndTypeNamesEqualRule = GetDiagnosticDescriptor(2, AutoPatternName, "Type name '{0}' cannot be equal to containing namespace: '{1}'");
+            NonPartialTypeRule = GetDiagnosticDescriptor(1, AutoPatternName, "Type decorated with {3} must be also declared partial");
+            NamespaceAndTypeNamesEqualRule = GetDiagnosticDescriptor(2, AutoPatternName, "Type name '{0}' cannot be equal to containing namespace: '{1}'");
         }
 
         public sealed override void Initialize(GeneratorInitializationContext context) => context.RegisterForSyntaxNotifications(() => new AutoAttributeSyntaxReceiver());
@@ -88,13 +88,13 @@ namespace AutoPatterns
                 {
                     if (!type.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)))
                     {
-                        ReportDiagnostics(context, _nonPartialTypeRule, typeSymbol);
+                        ReportDiagnostics(context, NonPartialTypeRule, typeSymbol);
                         continue;
                     }
 
                     if (!typeSymbol.ContainingSymbol.Equals(typeSymbol.ContainingNamespace, SymbolEqualityComparer.Default))
                     {
-                        ReportDiagnostics(context, _namespaceAndTypeNamesEqualRule, typeSymbol);
+                        ReportDiagnostics(context, NamespaceAndTypeNamesEqualRule, typeSymbol);
                         continue;
                     }
 
@@ -130,7 +130,7 @@ namespace AutoPatterns
         protected abstract bool ShouldRender(INamedTypeSymbol typeSymbol, INamedTypeSymbol autoAttributeSymbol,
             in GeneratorExecutionContext context, ICollection<Using> namespaces, TRenderState? state);
 
-        protected abstract void Render(StringBuilder source, TypeMeta meta, TRenderState? state);
+        protected abstract void Render(StringBuilder source, TypeMeta typeMeta, TRenderState? state);
 
         /*protected void RenderGeneratedAttributes(StringBuilder source) => source.AppendLine($@"
 {INDENT_1}[System.CodeDom.Compiler.GeneratedCode(""{GetType().Name}"", ""{Assembly.GetExecutingAssembly().GetName().Version}"")]

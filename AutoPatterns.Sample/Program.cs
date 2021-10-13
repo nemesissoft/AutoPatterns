@@ -48,5 +48,7 @@ namespace AutoPatterns.Sample
     partial class EmptyBase
     {
     }
+
+  
 }
 

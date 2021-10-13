@@ -5,7 +5,26 @@ namespace AutoPatterns.Tests
     static class EndToEndCases
     {
         public static IReadOnlyList<(string name, int generatedTreesCount, string source, string expectedCode)> AutoWithCases() => new[]
-      {
+        {
+            ("NoValidation", 1, @"[AutoWith(supportValidation: false)] partial struct Main { public string Text { get; } }",
+                @"using System;
+using System.Collections.Generic;
+using Auto;
+
+namespace AutoPatterns.Tests
+{
+    partial struct Main 
+    {
+        public Main(string text)
+        {
+            Text = text;
+        }
+
+        [System.Diagnostics.Contracts.Pure]
+        public Main WithText(string value) => new Main(value);
+    }
+}"),
+
             ("Struct", 1, @"[AutoWith] partial struct Main
     {
         public string Text { get; }
