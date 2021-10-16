@@ -37,22 +37,7 @@ namespace AutoPatterns.Tests {{ {t.source} }}", t.expectedCode, t.generatedTrees
         }
 
 
-
-        //TODO tests for abstract://do not generate Withers for abstract class +
-        //do not generate withers for abstract properties + do not generate ctor for abstract properties
-        //+ protected ctor for abstract class
-        /*[Auto.AutoWith(false)] abstract partial class Abstract
-            {
-                public int NormalNumber { get; }
-                public abstract int AbstractNumber { get; }
-            }
-
-            [Auto.AutoWith(false)] partial class Der: Abstract
-            {
-                public override int AbstractNumber { get; }
-                public int DerivedNumber { get; }
-            }*/
-
+        
 
         //TODO tests for lack of validation == lack of generation OnConstructed 
 

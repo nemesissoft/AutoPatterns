@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 
@@ -9,12 +10,14 @@ using Microsoft.CodeAnalysis;
 
 namespace AutoPatterns
 {
-    public record AutoWithGeneratorState(IList<MemberMeta> Properties, AutoWithSettings? Settings);
+    public record AutoWithGeneratorState(
+        IReadOnlyList<PropertyMeta> DeclaredInTypeProperties,
+        IReadOnlyList<PropertyMeta> DeclaredOutsideProperties,
+        IReadOnlyList<PropertyMeta> AllNonAbstractProperties);
 
     [Generator]
-    public sealed class AutoWithGenerator : AutoAttributeGenerator<AutoWithGeneratorState>
+    public sealed class AutoWithGenerator : AutoAttributeGenerator<AutoWithGeneratorState, AutoWithSettings>
     {
-        internal readonly DiagnosticDescriptor InvalidSettingsAttributeRule;
         internal readonly DiagnosticDescriptor BaseTypeNotDecorated;
         internal readonly DiagnosticDescriptor NoContractMembersRule;
 
@@ -28,51 +31,22 @@ namespace Auto
 
         public AutoWithAttribute(bool supportValidation = true) => SupportValidation = supportValidation;
     }
-}")
+}", "Attribute {3} must be constructed with 1 boolean value, or with default values")
         {
-            InvalidSettingsAttributeRule = GetDiagnosticDescriptor(3, AutoPatternName, "Attribute {3} must be constructed with 1 boolean value, or with default values");
             BaseTypeNotDecorated = GetDiagnosticDescriptor(4, AutoPatternName, "Base '{0}' type must also be decorated with {3} attribute");
-            NoContractMembersRule = GetDiagnosticDescriptor(50, AutoPatternName, $"No properties for {AutoPatternName} pattern defined at '{{0}}'", DiagnosticSeverity.Warning);
+            NoContractMembersRule = GetDiagnosticDescriptor(50, AutoPatternName, $"No non-abstract properties for {AutoPatternName} pattern defined at '{{0}}'", DiagnosticSeverity.Warning);
         }
-
-        protected override bool ShouldProcessType(ISymbol typeSymbol, ISymbol autoAttributeSymbol,
-            in GeneratorExecutionContext context, out AutoWithGeneratorState? state)
-        {
-            if (GeneratorUtils.GetAttribute(typeSymbol, autoAttributeSymbol) is { } autoAttributeData)
-            {
-                if (CommonAutoSettings.TryLoad<AutoWithSettings>(autoAttributeData, context, out var settings))
-                {
-                    state = new(new List<MemberMeta>(), settings);
-                    return true;
-                }
-                else
-                    ReportDiagnostics(context, InvalidSettingsAttributeRule, typeSymbol);
-            }
-
-            state = default;
-            return false;
-        }
-
 
         protected override bool ShouldRender(INamedTypeSymbol typeSymbol, INamedTypeSymbol autoAttributeSymbol,
-            in GeneratorExecutionContext context, ICollection<Using> namespaces, AutoWithGeneratorState? state)
+            in GeneratorExecutionContext context, ISet<Using> namespaces, AutoWithSettings settings,
+            [NotNullWhen(true)] out AutoWithGeneratorState? state)
         {
-            if (state is null)
-            {
-                ReportDiagnostics(context, NullStateRule, typeSymbol);
-                return false;
-            }
+            var declaredInTypeProperties = PropertyMeta.GetProperties(typeSymbol, namespaces)
+                .Where(p => !p.IsAbstract).ToList();
 
-            var propertyList = new List<MemberMeta>();
+            var allNonAbstractProperties = declaredInTypeProperties.ToList();
 
-            void FetchProperties(INamespaceOrTypeSymbol symbol, bool declaredInBase)
-            {
-                foreach (var ps in symbol.GetMembers().Where(s => s.Kind == SymbolKind.Property).OfType<IPropertySymbol>())
-                {
-                    propertyList.Add(new(ps.Name, SymbolUtils.GetTypeMinimalName(ps.Type), declaredInBase, ps.IsAbstract));
-                    Using.ExtractNamespaces(ps.Type, namespaces);
-                }
-            }
+            var declaredOutsideProperties = new List<PropertyMeta>();
 
             var basesDecoratedProperly = true;
             foreach (var baseType in SymbolUtils.GetSymbolHierarchy(typeSymbol))
@@ -82,31 +56,26 @@ namespace Auto
                     ReportDiagnostics(context, BaseTypeNotDecorated, baseType);
                     basesDecoratedProperly = false;
                 }
-
-                FetchProperties(baseType, true);
+                foreach (var pm in PropertyMeta.GetProperties(baseType, namespaces))
+                    if (!pm.IsAbstract)
+                    {
+                        declaredOutsideProperties.Add(pm);
+                        allNonAbstractProperties.Add(pm);
+                    }
             }
 
-            FetchProperties(typeSymbol, false);
+            state = new(declaredInTypeProperties, declaredOutsideProperties, allNonAbstractProperties);
 
-            if (propertyList.Count == 0)
-            {
-                ReportDiagnostics(context, NoContractMembersRule, typeSymbol);
-                return false;
-            }
+            var nonAbstractPropertiesCount = declaredInTypeProperties.Count + declaredOutsideProperties.Count;
 
-            foreach (var prop in propertyList)
-                state.Properties.Add(prop);
-            return basesDecoratedProperly;
+            if (nonAbstractPropertiesCount > 0) return basesDecoratedProperly;
+
+            ReportDiagnostics(context, NoContractMembersRule, typeSymbol);
+            return false;
         }
 
-
-        protected override void Render(StringBuilder source, TypeMeta typeMeta, AutoWithGeneratorState? state)
+        protected override void Render(StringBuilder source, TypeMeta typeMeta, AutoWithSettings settings, AutoWithGeneratorState state)
         {
-            var properties = state?.Properties ?? new List<MemberMeta>();
-            properties = properties.Where(p => !p.IsAbstract).ToList();
-
-            var settings = state?.Settings ?? new AutoWithSettings(true);
-
             source.AppendLine($@"
 namespace {typeMeta.Namespace}
 {{");
@@ -119,23 +88,28 @@ namespace {typeMeta.Namespace}
             source.Append(@$"
         {(typeMeta.IsAbstract ? "protected" : "public")} {typeMeta.Name}(");
 
-            for (var i = 0; i < properties.Count; i++)
+            var allProperties = state.AllNonAbstractProperties;
+            //TODO //pomiń overridy wirtualnych propertów + overridy abstraktów nadpisanych wyżej 
+
+            for (var i = 0; i < allProperties.Count; i++)
             {
-                source.Append(properties[i].Type).Append(" ").Append(properties[i].ParameterName);
-                if (i < properties.Count - 1)
+                source.Append(allProperties[i].Type).Append(" ").Append(allProperties[i].ParameterName);
+                if (i < allProperties.Count - 1)
                     source.Append(", ");
             }
 
             source.Append(")");
 
-            if (properties.Where(p => p.DeclaredInBase).ToList() is { Count: > 0 } declaredInBase)
+            var declaredOutside = state.DeclaredOutsideProperties;
+
+            if (declaredOutside.Count > 0)
             {
                 source.Append(" : base(");
 
-                for (var i = 0; i < declaredInBase.Count; i++)
+                for (var i = 0; i < declaredOutside.Count; i++)
                 {
-                    source.Append(declaredInBase[i].ParameterName);
-                    if (i < declaredInBase.Count - 1)
+                    source.Append(declaredOutside[i].ParameterName);
+                    if (i < declaredOutside.Count - 1)
                         source.Append(", ");
                 }
 
@@ -145,8 +119,10 @@ namespace {typeMeta.Namespace}
             source.AppendLine(@"
         {");
 
-            foreach (var p in properties.Where(p => !p.DeclaredInBase))
-                source.Append(INDENT_3).Append(p.Name).Append(" = ").Append(p.ParameterName).AppendLine(";");
+            var declaredInType = state.DeclaredInTypeProperties;
+
+            foreach (var p in declaredInType)
+                source.Append(INDENT_3).Append("this.").Append(p.Name).Append(" = ").Append(p.ParameterName).AppendLine(";");
 
             if (settings.SupportValidation)
                 source.Append(@"
@@ -158,31 +134,62 @@ namespace {typeMeta.Namespace}
                 source.AppendLine(@"
         partial void OnConstructed();");
 
-            if (!typeMeta.IsAbstract)
-                for (var i = 0; i < properties.Count; i++)
-                {
-                    var p = properties[i];
-                    source.Append(@"
-        [System.Diagnostics.Contracts.Pure]
-        public ").Append(p.DeclaredInBase ? "new " : "").Append(typeMeta.Name)
-                        .Append(" With").Append(p.Name)
-                        .Append("(").Append(p.Type).Append(" value) => new ")
-                        .Append(typeMeta.Name).Append("(");
-
-                    for (var j = 0; j < properties.Count; j++)
-                    {
-                        source.Append(i == j ? "value" : properties[j].Name);
-
-                        if (j < properties.Count - 1)
-                            source.Append(", ");
-                    }
-
-                    source.AppendLine(");");
-                }
+            /*if (!typeMeta.IsAbstract)
+            {
+                RenderWithers(source, typeMeta, declaredInType, allProperties, true);
+                RenderWithers(source, typeMeta, declaredOutside, allProperties, false);
+            }
+            else
+            {
+                RenderAbstractWithersDeclaration(source, typeMeta, declaredInType);
+            }*/
 
 
             source.AppendLine(@"    }
 }");
+        }
+
+        private static void RenderAbstractWithersDeclaration(StringBuilder source, TypeMeta typeMeta, IEnumerable<PropertyMeta> declaredInType)
+        {
+            foreach (var prop in declaredInType)
+            {
+                source.Append(@"        
+        public abstract ").Append(typeMeta.Name)
+                    .Append(" With").Append(prop.Name)
+                    .Append("(").Append(prop.Type).AppendLine(" value);");
+            }
+        }
+
+        private static void RenderWithers(StringBuilder source, TypeMeta typeMeta,
+            IEnumerable<PropertyMeta> properties,
+            IReadOnlyList<PropertyMeta> allProperties,
+            bool declaredInType)
+        {
+            foreach (var prop in properties)
+            {
+                source.Append(@"
+        [System.Diagnostics.Contracts.Pure]
+        public ")
+                    .Append(declaredInType
+                        ? typeMeta.IsSealed ? "" : "virtual "
+                        : prop.IsAbstract || prop.IsVirtual ? "override " : "new "
+                    )
+                    .Append(typeMeta.Name)
+                    .Append(" With").Append(prop.Name)
+                    .Append("(").Append(prop.Type).Append(" value) => new ")
+                    .Append(typeMeta.Name).Append("(");
+
+                for (var j = 0; j < allProperties.Count; j++)
+                {
+                    var allName = allProperties[j].Name;
+                    source.Append(prop.Name == allName ? "value" : allName);
+
+                    if (j < allProperties.Count - 1)
+                        source.Append(", ");
+                }
+
+                source.AppendLine(");");
+            }
         }
     }
 }

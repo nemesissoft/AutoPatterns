@@ -50,7 +50,7 @@ namespace AutoPatterns.Tests {{ {t.source} }}")
             (@"[AutoWith(1)]              
               partial class NonBool { }", nameof(AutoWithGenerator.InvalidSettingsAttributeRule), "Attribute AutoWithAttribute must be constructed with 1 boolean value, or with default values"),
 
-            (@"[AutoWith] partial class NoProperties { }", nameof(AutoWithGenerator.NoContractMembersRule), "warning AutoWith050: NoProperties: No properties for With pattern defined at 'NoProperties'"),
+            (@"[AutoWith] partial class NoProperties { }", nameof(AutoWithGenerator.NoContractMembersRule), "warning AutoWith050: NoProperties: No non-abstract properties for With pattern defined at 'NoProperties'"),
 
             (@"namespace Test {
     partial class ContainingType { [Auto.AutoWith] partial class Test{} } 

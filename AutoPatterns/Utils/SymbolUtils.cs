@@ -7,10 +7,8 @@ namespace AutoPatterns.Utils
 
     internal static class SymbolUtils
     {
-        public static IEnumerable<INamedTypeSymbol> GetSymbolHierarchy(ITypeSymbol symbol)
+        public static IEnumerable<INamedTypeSymbol> GetSymbolHierarchy(INamedTypeSymbol symbol)
         {
-            var result = new List<INamedTypeSymbol>();
-
             while (symbol.BaseType != null)
             {
                 var @base = symbol.BaseType;
@@ -18,12 +16,16 @@ namespace AutoPatterns.Utils
                 if (@base.SpecialType is SpecialType.System_Object or SpecialType.System_ValueType)
                     break;
 
-                result.Insert(0, @base);
+                yield return @base;
                 symbol = @base;
-            }
+            } }
 
-            return result;
-        }
+        /*public static IEnumerable<INamedTypeSymbol> GetSymbolHierarchyWithSelf(INamedTypeSymbol symbol)
+        {
+            yield return symbol;
+            foreach (var s in GetSymbolHierarchy(symbol))
+                yield return s;
+        }*/
 
         public static string GetTypeMinimalName(ISymbol ts) =>
             ts.ContainingType is { } containingType

@@ -1,5 +1,7 @@
-﻿using System;
+﻿#nullable enable
+using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -72,19 +74,18 @@ namespace AutoPatterns.Utils
         private void LoadCommon(GeneratorExecutionContext context) =>
             GenerateDebuggerHook = context.IsOptionEnabled("GenerateDebuggerHook");
 
-        public static bool TryLoad<TSettings>(AttributeData attribute, GeneratorExecutionContext context, out TSettings? result)
+        public static bool TryLoad<TSettings>(AttributeData attribute, GeneratorExecutionContext context, [NotNullWhen(returnValue: true)] out TSettings? result)
             where TSettings : CommonAutoSettings
         {
-            var settingsType = typeof(TSettings);
-            var attrReader = _attributeParameterReaders.TryGetValue(settingsType, out var reader)
-                ? reader
-                : throw new NotSupportedException(
-                    $"{settingsType.Name} is not properly configured in settings reader");
-
             CommonAutoSettings? newSettings = null;
-
             try
             {
+                var settingsType = typeof(TSettings);
+                var attrReader = _attributeParameterReaders.TryGetValue(settingsType, out var reader)
+                    ? reader
+                    : throw new NotSupportedException(
+                        $"{settingsType.Name} is not properly configured in settings reader");
+                
                 if (attribute.ConstructorArguments is { } args && args.Length <= reader.MaxAttrParams &&
                     AttributeDataReader.IsConstructedWithPrimitives(args))
                 {

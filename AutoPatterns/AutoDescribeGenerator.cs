@@ -6,7 +6,7 @@ using AutoPatterns.Utils;
 
 using Microsoft.CodeAnalysis;
 
-
+//TODO pass StringBuilder to Descriptor.Describe + do not materialize large Enumerables + provide non-pattern match Describe 
 namespace AutoPatterns
 {
     public record AutoDescribeGeneratorState(IList<MemberMeta> Properties, AutoDescribeSettings? Settings)
@@ -81,7 +81,7 @@ namespace Auto
 
 
         protected override bool ShouldRender(INamedTypeSymbol typeSymbol, INamedTypeSymbol autoAttributeSymbol,
-            in GeneratorExecutionContext context, ICollection<Using> namespaces, AutoDescribeGeneratorState? state)
+            in GeneratorExecutionContext context, ISet<Using> namespaces, AutoDescribeGeneratorState? state)
         {
             if (state is null)
             {

@@ -1,4 +1,5 @@
-﻿using System;
+﻿#nullable enable
+using System;
 using System.Text;
 using AutoPatterns.Utils;
 using Microsoft.CodeAnalysis;
@@ -6,8 +7,10 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Linq;
+using System.Reflection;
 
 namespace AutoPatterns
 {
@@ -28,8 +31,6 @@ namespace AutoPatterns
         internal static readonly DiagnosticDescriptor NoSyntaxReceiver = GetDiagnosticDescriptor(256, "Auto", "Internal error - no appropriate syntax receiver");
         internal static readonly DiagnosticDescriptor CSharpNotSupported = GetDiagnosticDescriptor(257, "Auto", "C# compilation units are NOT supported");
         //internal static readonly DiagnosticDescriptor VisualBasicNotSupported = GetDiagnosticDescriptor(258, "Auto", "VB.NET compilation units are NOT supported");
-        internal static readonly DiagnosticDescriptor NullStateRule = GetDiagnosticDescriptor(259, "Auto", "Generator internal state is null");
-
 
         protected static DiagnosticDescriptor GetDiagnosticDescriptor(ushort id, string patternName, string message, DiagnosticSeverity diagnosticSeverity = DiagnosticSeverity.Error)
             => new($"Auto{patternName}{id:000}", $"Couldn't generate automatic '{patternName}' pattern", "{0}: " + message, "AutoGenerator", diagnosticSeverity, true);
@@ -39,9 +40,9 @@ namespace AutoPatterns
                 symbol?.Name, symbol?.ContainingNamespace?.ToString(), GetType().FullName, AutoAttributeName
             ));
     }
-
-    //TODO separate state from settings 
-    public abstract class AutoAttributeGenerator<TRenderState> : AutoAttributeGenerator
+    
+    public abstract class AutoAttributeGenerator<TRenderState, TSettings> : AutoAttributeGenerator
+        where TSettings : CommonAutoSettings
     {
         public sealed override string AutoPatternName { get; }
         public sealed override string AutoAttributeName { get; }
@@ -49,8 +50,9 @@ namespace AutoPatterns
 
         internal readonly DiagnosticDescriptor NonPartialTypeRule;
         internal readonly DiagnosticDescriptor NamespaceAndTypeNamesEqualRule;
+        internal readonly DiagnosticDescriptor? InvalidSettingsAttributeRule;
 
-        protected AutoAttributeGenerator(string autoPatternName, string autoAttributeName, string autoAttributeSource)
+        protected AutoAttributeGenerator(string autoPatternName, string autoAttributeName, string autoAttributeSource, string? invalidSettingsAttributeRuleMessage)
         {
             AutoPatternName = autoPatternName;
             AutoAttributeName = autoAttributeName;
@@ -58,6 +60,8 @@ namespace AutoPatterns
 
             NonPartialTypeRule = GetDiagnosticDescriptor(1, AutoPatternName, "Type decorated with {3} must be also declared partial");
             NamespaceAndTypeNamesEqualRule = GetDiagnosticDescriptor(2, AutoPatternName, "Type name '{0}' cannot be equal to containing namespace: '{1}'");
+            InvalidSettingsAttributeRule = invalidSettingsAttributeRuleMessage == null ? null
+                : GetDiagnosticDescriptor(3, AutoPatternName, invalidSettingsAttributeRuleMessage);
         }
 
         public sealed override void Initialize(GeneratorInitializationContext context) => context.RegisterForSyntaxNotifications(() => new AutoAttributeSyntaxReceiver());
@@ -84,7 +88,8 @@ namespace AutoPatterns
             {
                 var model = compilation.GetSemanticModel(type.SyntaxTree);
 
-                if (model.GetDeclaredSymbol(type) is { } typeSymbol && ShouldProcessType(typeSymbol, autoAttributeSymbol, context, out var state))
+                if (model.GetDeclaredSymbol(type) is { } typeSymbol &&
+                    ShouldProcessType(typeSymbol, autoAttributeSymbol, context, out var settings))
                 {
                     if (!type.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)))
                     {
@@ -104,7 +109,7 @@ namespace AutoPatterns
                     namespaces.Add("System");
 
 
-                    if (ShouldRender(typeSymbol, autoAttributeSymbol, context, namespaces, state))
+                    if (ShouldRender(typeSymbol, autoAttributeSymbol, context, namespaces, settings, out var state))
                     {
                         var meta = TypeMeta.FromDeclaration(type, typeSymbol);
 
@@ -117,24 +122,37 @@ namespace AutoPatterns
                             if (!string.Equals(meta.Namespace, ns.NamespaceOrType, StringComparison.Ordinal))
                                 source.AppendLine(ns.ToCSharpCode());
 
-                        Render(source, meta, state);
+                        Render(source, meta, settings, state);
                         context.AddSource($"{typeSymbol.Name}_{AutoPatternName}AutoPattern.cs", SourceText.From(source.ToString(), Encoding.UTF8));
                     }
                 }
             }
         }
 
-        protected abstract bool ShouldProcessType(ISymbol typeSymbol, ISymbol autoAttributeSymbol,
-            in GeneratorExecutionContext context, out TRenderState? state);
+        protected virtual bool ShouldProcessType(ISymbol typeSymbol, ISymbol autoAttributeSymbol, in GeneratorExecutionContext context,
+            [NotNullWhen(true)] out TSettings? settings)
+        {
+            if (GeneratorUtils.GetAttribute(typeSymbol, autoAttributeSymbol) is { } autoAttributeData)
+            {
+                if (CommonAutoSettings.TryLoad(autoAttributeData, context, out settings))
+                    return true;
+                else if (InvalidSettingsAttributeRule is not null)
+                    ReportDiagnostics(context, InvalidSettingsAttributeRule, typeSymbol);
+            }
 
+            settings = default;
+            return false;
+        }
+        
         protected abstract bool ShouldRender(INamedTypeSymbol typeSymbol, INamedTypeSymbol autoAttributeSymbol,
-            in GeneratorExecutionContext context, ICollection<Using> namespaces, TRenderState? state);
+            in GeneratorExecutionContext context, ISet<Using> namespaces, TSettings settings,
+            [NotNullWhen(true)] out TRenderState? state);
 
-        protected abstract void Render(StringBuilder source, TypeMeta typeMeta, TRenderState? state);
+        protected abstract void Render(StringBuilder source, TypeMeta typeMeta, TSettings settings, TRenderState state);
 
-        /*protected void RenderGeneratedAttributes(StringBuilder source) => source.AppendLine($@"
+        protected void RenderGeneratedAttributes(StringBuilder source) => source.AppendLine($@"
 {INDENT_1}[System.CodeDom.Compiler.GeneratedCode(""{GetType().Name}"", ""{Assembly.GetExecutingAssembly().GetName().Version}"")]
-{INDENT_1}[System.Runtime.CompilerServices.CompilerGenerated]");*/
+{INDENT_1}[System.Runtime.CompilerServices.CompilerGenerated]");
 
         protected void RenderDebuggerHook(StringBuilder source, CommonAutoSettings settings)
         {

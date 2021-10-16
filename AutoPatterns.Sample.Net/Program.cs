@@ -9,17 +9,17 @@ namespace AutoPatterns.Sample.Net
     {
         static void Main()
         {
-            var @base = new Base("", 15, DateTime.MaxValue, new() { true, false })
+            /*var @base = new Base("", 15, DateTime.MaxValue, new() { true, false })
                 .WithBaseText("AAA");
             Console.WriteLine(@base);
 
             var der2 = new Derived2("", 15, DateTime.MaxValue, null, false, FileMode.Append, 88)
                 .WithBaseText("BBB");
-            Console.WriteLine(der2);
+            Console.WriteLine(der2);*/
         }
     }
 
-    [Auto.AutoWith]
+    /*[Auto.AutoWith]
     [Auto.AutoDescribe(true, true)]
     partial class Base
     {
@@ -49,5 +49,5 @@ namespace AutoPatterns.Sample.Net
     [Auto.AutoDescribe(true, true)]
     partial class EmptyBase
     {
-    }
+    }*/
 }

@@ -27,12 +27,12 @@ namespace AutoPatterns.Utils
             var result = new HashSet<Using>();
 
             foreach (var u in compilationUnit.Usings)
-                result.Add(new Using(u.Name.ToString(), u.Alias?.ToString(), !u.StaticKeyword.IsKind(SyntaxKind.None)));
+                result.Add(new(u.Name.ToString(), u.Alias?.ToString(), !u.StaticKeyword.IsKind(SyntaxKind.None)));
 
             return result;
         }
 
-        public static void ExtractNamespaces(ITypeSymbol typeSymbol, ICollection<Using> namespacesCollection)
+        public static void ExtractNamespaces(ITypeSymbol typeSymbol, ISet<Using> namespacesCollection)
         {
             if (typeSymbol is INamedTypeSymbol { IsGenericType: true } namedType) //namedType.TypeParameters for unbound generics
             {
