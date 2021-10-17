@@ -40,13 +40,31 @@ namespace AutoPatterns.Utils
         }
     }
 
-    public sealed record PropertyMeta(string Name, string Type, bool IsAbstract, bool IsVirtual, bool IsOverride) : MemberMeta(Name, Type)
+    [Flags]
+    public enum PropertyModifiers : byte
     {
+        None = 0,
+        Abstract = 1,
+        Virtual = 2,
+        Override = 4
+    }
+
+    public sealed record PropertyMeta(string Name, string Type, PropertyModifiers Modifiers) : MemberMeta(Name, Type)
+    {
+        public bool IsAbstract => (Modifiers & PropertyModifiers.Abstract) > 0;
+        public bool IsVirtual => (Modifiers & PropertyModifiers.Virtual) > 0;
+        public bool IsOverride => (Modifiers & PropertyModifiers.Override) > 0;
+
+
         public static IEnumerable<PropertyMeta> GetProperties(INamespaceOrTypeSymbol symbol, ISet<Using> namespacesCollector)
         {
             foreach (var ps in symbol.GetMembers().Where(s => s.Kind == SymbolKind.Property).OfType<IPropertySymbol>())
             {
-                yield return new(ps.Name, SymbolUtils.GetTypeMinimalName(ps.Type), ps.IsAbstract, ps.IsVirtual, ps.IsOverride);
+                yield return new(ps.Name, SymbolUtils.GetTypeMinimalName(ps.Type),
+                    (ps.IsAbstract ? PropertyModifiers.Abstract : 0) |
+                    (ps.IsVirtual ? PropertyModifiers.Virtual : 0) |
+                    (ps.IsOverride ? PropertyModifiers.Override : 0)
+                );
                 Using.ExtractNamespaces(ps.Type, namespacesCollector);
             }
         }

@@ -50,7 +50,7 @@ namespace AutoPatterns.Sample
     }*/
 
 
-    [Auto.AutoWith]
+    /*[Auto.AutoWith]
     abstract partial class Base1
     {
         public int Normal1 { get; }
@@ -73,7 +73,7 @@ namespace AutoPatterns.Sample
         public abstract int Abstract3 { get; }
         public int Normal3 { get; }
         public override int Virtual1 { get; }
-    }
+    }*/
 
     /*[Auto.AutoWith(false)]
     partial class Implementation4 : Base3

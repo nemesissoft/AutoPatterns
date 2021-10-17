@@ -49,4 +49,19 @@ namespace AutoPatterns.Sample2
             Virtual1 = virtual1;
         }
     }
+
+    abstract partial class Implementation4: Base3
+    {
+        public override int Abstract3 { get; }
+        public int Normal4 { get; }
+        public override int Abstract1 { get; }
+
+        protected Implementation4(int normal1, int virtual1, int abstract1, int normal2, int virtual2, int normal3, int abstract3, int normal4) 
+            : base(normal1, virtual1, abstract1, normal2, virtual2, normal3)
+        {
+            Abstract3 = abstract3;
+            Normal4 = normal4;
+            Abstract1 = abstract1;
+        }
+    }
 }

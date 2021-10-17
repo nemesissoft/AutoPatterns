@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Nemesis.CodeAnalysis;
 
 using NUnit.Framework;
@@ -17,13 +17,16 @@ namespace AutoPatterns.Tests
             .Select((t, i) => new TestCaseData($@"using Auto;
 using System;
 using System.Collections.Generic;
-namespace AutoPatterns.Tests {{ {t.source} }}", t.expectedCode, t.generatedTreesCount)
+namespace AutoPatterns.Tests {{ {t.source} }}", t.expectedCode)
                 .SetName($"E2E_{i + 1:00}_{t.name}"));
 
         [TestCaseSource(nameof(_endToEndCases))]
-        public void EndToEndTests(string source, string expectedCode, int generatedTreesCount)
+        public void EndToEndTests(string source, string expectedCode)
         {
             var compilation = CreateCompilation(source);
+
+            var generatedTreesCount = compilation.SyntaxTrees
+                .Select(tree => tree.GetRoot().DescendantNodes().OfType<TypeDeclarationSyntax>().Count()).Sum();
 
             var initialDiagnostics = CompilationUtils.GetCompilationIssues(compilation);
 
@@ -31,17 +34,9 @@ namespace AutoPatterns.Tests {{ {t.source} }}", t.expectedCode, t.generatedTrees
 
             var generatedTrees = GetGeneratedTreesOnly<AutoWithGenerator>(compilation, generatedTreesCount);
 
-            var actual = ScrubGeneratorComments(string.Join(Environment.NewLine + Environment.NewLine, generatedTrees));
+            var actual = ScrubGeneratorComments(string.Join(Environment.NewLine, generatedTrees));
 
             Assert.That(actual, Is.EqualTo(expectedCode).Using(IgnoreNewLinesComparer.EqualityComparer));
         }
-
-
-        
-
-        //TODO tests for lack of validation == lack of generation OnConstructed 
-
-
-        //TODO test for Base class with no members but with Derived class with some members 
     }
 }

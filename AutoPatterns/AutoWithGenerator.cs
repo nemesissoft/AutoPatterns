@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
@@ -10,10 +11,24 @@ using Microsoft.CodeAnalysis;
 
 namespace AutoPatterns
 {
-    public record AutoWithGeneratorState(
-        IReadOnlyList<PropertyMeta> DeclaredInTypeProperties,
-        IReadOnlyList<PropertyMeta> DeclaredOutsideProperties,
-        IReadOnlyList<PropertyMeta> AllNonAbstractProperties);
+    public class Meta
+    {
+        public string TypeName { get; }
+        public IReadOnlyList<PropertyMeta> Properties { get; }
+        public Meta? Base { get; }
+        public bool HasBase => Base is not null;
+
+        public Meta(string typeName, IReadOnlyList<PropertyMeta> properties, Meta? @base)
+        {
+            TypeName = typeName;
+            Properties = properties;
+            Base = @base;
+        }
+
+        public override string ToString() => $"{TypeName} ({Properties?.Count ?? 0}) => {Base?.ToString() ?? "∅"}";
+    }
+
+    public record AutoWithGeneratorState(Meta Meta);
 
     [Generator]
     public sealed class AutoWithGenerator : AutoAttributeGenerator<AutoWithGeneratorState, AutoWithSettings>
@@ -41,38 +56,51 @@ namespace Auto
             in GeneratorExecutionContext context, ISet<Using> namespaces, AutoWithSettings settings,
             [NotNullWhen(true)] out AutoWithGeneratorState? state)
         {
-            var declaredInTypeProperties = PropertyMeta.GetProperties(typeSymbol, namespaces)
-                .Where(p => !p.IsAbstract).ToList();
-
-            var allNonAbstractProperties = declaredInTypeProperties.ToList();
-
-            var declaredOutsideProperties = new List<PropertyMeta>();
-
+            state = null;
+            var hierarchy = SymbolUtils.GetSymbolHierarchy(typeSymbol).Reverse().ToList();
             var basesDecoratedProperly = true;
-            foreach (var baseType in SymbolUtils.GetSymbolHierarchy(typeSymbol))
+            foreach (var baseType in hierarchy)
             {
                 if (!ShouldProcessType(baseType, autoAttributeSymbol, context, out _))
                 {
                     ReportDiagnostics(context, BaseTypeNotDecorated, baseType);
                     basesDecoratedProperly = false;
                 }
-                foreach (var pm in PropertyMeta.GetProperties(baseType, namespaces))
-                    if (!pm.IsAbstract)
-                    {
-                        declaredOutsideProperties.Add(pm);
-                        allNonAbstractProperties.Add(pm);
-                    }
+            }
+            if (!basesDecoratedProperly)
+                return false;
+
+            hierarchy.Add(typeSymbol);
+            Meta? meta = null;
+            foreach (var symbol in hierarchy)
+                meta = new(symbol.Name,
+                    PropertyMeta.GetProperties(symbol, namespaces).ToList(), meta);
+
+            if (meta is null)
+                return false;
+
+            state = new(meta);
+
+            static int GetNonAbstractPropertiesCount(Meta meta)
+            {
+                var nonAbstractPropertiesCount = 0;
+                var current = meta;
+                do
+                {
+                    nonAbstractPropertiesCount += current.Properties.Count(p => !p.IsAbstract);
+                    current = current.Base;
+                } while (current is not null);
+
+                return nonAbstractPropertiesCount;
             }
 
-            state = new(declaredInTypeProperties, declaredOutsideProperties, allNonAbstractProperties);
+            if (typeSymbol.IsAbstract || GetNonAbstractPropertiesCount(meta) > 0) return true;
 
-            var nonAbstractPropertiesCount = declaredInTypeProperties.Count + declaredOutsideProperties.Count;
-
-            if (nonAbstractPropertiesCount > 0) return basesDecoratedProperly;
 
             ReportDiagnostics(context, NoContractMembersRule, typeSymbol);
             return false;
         }
+
 
         protected override void Render(StringBuilder source, TypeMeta typeMeta, AutoWithSettings settings, AutoWithGeneratorState state)
         {
@@ -88,38 +116,31 @@ namespace {typeMeta.Namespace}
             source.Append(@$"
         {(typeMeta.IsAbstract ? "protected" : "public")} {typeMeta.Name}(");
 
-            var allProperties = state.AllNonAbstractProperties;
-            //TODO //pomiń overridy wirtualnych propertów + overridy abstraktów nadpisanych wyżej 
+            Meta meta = state.Meta;
+            var allProperties = GetAllProperties(meta);
 
             for (var i = 0; i < allProperties.Count; i++)
-            {
-                source.Append(allProperties[i].Type).Append(" ").Append(allProperties[i].ParameterName);
-                if (i < allProperties.Count - 1)
-                    source.Append(", ");
-            }
-
+                source.Append(allProperties[i].Type).Append(" ")
+                      .Append(allProperties[i].ParameterName)
+                      .Append(i < allProperties.Count - 1 ? ", " : "");
             source.Append(")");
 
-            var declaredOutside = state.DeclaredOutsideProperties;
 
-            if (declaredOutside.Count > 0)
+            var declaredOutside = meta.Base is null ? null : GetAllProperties(meta.Base);
+
+            if (declaredOutside is not null)
             {
                 source.Append(" : base(");
-
                 for (var i = 0; i < declaredOutside.Count; i++)
-                {
-                    source.Append(declaredOutside[i].ParameterName);
-                    if (i < declaredOutside.Count - 1)
-                        source.Append(", ");
-                }
-
+                    source.Append(declaredOutside[i].ParameterName)
+                          .Append(i < declaredOutside.Count - 1 ? ", " : "");
                 source.Append(")");
             }
 
             source.AppendLine(@"
         {");
 
-            var declaredInType = state.DeclaredInTypeProperties;
+            var declaredInType = meta.Properties.Where(p => !p.IsAbstract).ToList();
 
             foreach (var p in declaredInType)
                 source.Append(INDENT_3).Append("this.").Append(p.Name).Append(" = ").Append(p.ParameterName).AppendLine(";");
@@ -134,6 +155,7 @@ namespace {typeMeta.Namespace}
                 source.AppendLine(@"
         partial void OnConstructed();");
 
+            //TODO add withers:
             /*if (!typeMeta.IsAbstract)
             {
                 RenderWithers(source, typeMeta, declaredInType, allProperties, true);
@@ -147,6 +169,68 @@ namespace {typeMeta.Namespace}
 
             source.AppendLine(@"    }
 }");
+        }
+
+        private static IReadOnlyList<PropertyMeta> GetAllProperties(Meta meta)
+        {
+            static bool IsOverrideOfVirtual(string propName, Meta current)
+            {
+                var m = current;
+                while ((m = m.Base) != null)
+                {
+                    if (m.Properties.Any(pm => string.Equals(pm.Name, propName) && pm.IsVirtual))
+                        return true;
+                }
+
+                return false;
+            }
+
+            static bool IsOverrideOfAbstract(string propName, Meta current)
+            {
+                var m = current;
+                while ((m = m.Base) != null)
+                {
+                    if (m.Properties.Any(pm => string.Equals(pm.Name, propName) && pm.IsAbstract))
+                        return true;
+                }
+
+                return false;
+            }
+
+            static bool IsOverrideOfPreviouslyImplementedAbstract(string propName, Meta current)
+            {
+                var m = current;
+                while ((m = m.Base) != null)
+                {
+                    if (m.Properties.Any(pm => string.Equals(pm.Name, propName) && pm.IsOverride && IsOverrideOfAbstract(propName, m)))
+                        return true;
+                }
+
+                return false;
+            }
+
+            var result = new List<PropertyMeta>();
+
+            var m = meta;
+            do
+            {
+                if (m.HasBase)
+                    foreach (var prop in m.Properties)
+                    {
+                        if (prop.IsAbstract) continue;
+
+                        var shouldAdd =
+                            !prop.IsOverride ||
+                            (!IsOverrideOfVirtual(prop.Name, m) && !IsOverrideOfPreviouslyImplementedAbstract(prop.Name, m));
+
+                        if (shouldAdd) result.Add(prop);
+                    }
+
+                else
+                    result.AddRange(m.Properties.Where(p => !p.IsAbstract));
+
+            } while ((m = m.Base) != null);
+            return result;
         }
 
         private static void RenderAbstractWithersDeclaration(StringBuilder source, TypeMeta typeMeta, IEnumerable<PropertyMeta> declaredInType)
